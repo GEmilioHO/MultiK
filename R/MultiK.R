@@ -9,7 +9,7 @@
 #' @param seed Optional numerical value. This sets a random seed for generating reproducible results
 #' @return A list with components: k is a vector of number of runs for each K. clusters is a list containing the clustering labels for each subsampling run at each resolution parameter. consensus is a list containing a consensus matrix for each K.
 #' @export
-MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, pSample = 0.8, seed = NULL) {
+MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, pSample = 0.8, seed = NULL, vars.to.regress = NULL) {
   # setting seed for reproducibility
   if (is.null(seed) == TRUE) {
     seed <- timeSeed <- as.numeric(Sys.time())
@@ -29,24 +29,37 @@ MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, p
   count <- 1
 
   suppressPackageStartupMessages(library(Seurat))
-
+  
   for(i in 1: reps) {
 
     print(paste("Rep: ", i, sep=""))
     # subsample the columns (the cells) from the full matrix
     subX <- seu[, subcol[[i]] ]
 
-    # normalizing the data
-    #subX <- NormalizeData(object = subX, normalization.method = "LogNormalize", scale.factor = 10000, verbose=F)
+    ## RNA Assay
+    if (DefaultAssay(subX) == "RNA") {
 
-    # Find HVG genes ~ 2000 genes
-    subX <- FindVariableFeatures(object = subX, selection.method = "vst", nfeatures = 2000,
-                                 loess.span = 0.3, clip.max = "auto",
-                                 num.bin = 20, binning.method = "equal_width", verbose = F)
+      # normalizing the data
+      #subX <- NormalizeData(object = subX, normalization.method = "LogNormalize", scale.factor = 10000, verbose=F)
+      
+      # Find HVG genes ~ 2000 genes
+      subX <- FindVariableFeatures(object = subX, selection.method = "vst", nfeatures = 2000,
+                                   loess.span = 0.3, clip.max = "auto",
+                                   num.bin = 20, binning.method = "equal_width", verbose = F)
 
-    # Scaling unwanted variation
-    all.genes <- rownames(x = subX)
-    subX <- ScaleData(object = subX, features = all.genes, verbose=F)
+      # Scaling unwanted variation
+      all.genes <- rownames(x = subX)
+      subX <- ScaleData(object = subX, features = all.genes, vars.to.regress = vars.to.regress, verbose = F)
+      
+    }
+
+    ## SCT Assay
+    if (DefaultAssay(subX) == "SCT") {
+
+      subX <- SCTransform(subX, vst.flavor = "v2", vars.to.regress = vars.to.regress, verbose = TRUE)
+      
+    }
+
     # Run PCA to reduce dimensions
     subX <- RunPCA(object = subX, features = VariableFeatures(object = subX), npcs = 50, verbose=F)
     # Run Clustering
