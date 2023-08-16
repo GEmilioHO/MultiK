@@ -9,16 +9,29 @@ getClusters <- function(seu, optK) {
 
   suppressPackageStartupMessages(library(Seurat))
 
-  # normalizing the data
-  seu <- NormalizeData(object = seu, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
-  # Find HVG genes ~ 2000 genes
-  seu <- FindVariableFeatures(object = seu, selection.method = "vst", nfeatures = 2000,
-                                   loess.span = 0.3, clip.max = "auto",
-                                   num.bin = 20, binning.method = "equal_width", verbose = FALSE)
+  ## RNA Assay
+  if (DefaultAssay(seu) == "RNA") {
 
-  # Scaling unwanted variation
-  all.genes <- rownames(x = seu)
-  seu <- ScaleData(object = seu, features = all.genes, verbose = FALSE)
+    # normalizing the data
+    seu <- NormalizeData(object = seu, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
+    
+    # Find HVG genes ~ 2000 genes
+    seu <- FindVariableFeatures(object = seu, selection.method = "vst", nfeatures = 2000,
+                                 loess.span = 0.3, clip.max = "auto",
+                                 num.bin = 20, binning.method = "equal_width", verbose = FALSE)
+
+    # Scaling unwanted variation
+    all.genes <- rownames(x = seu)
+    seu <- ScaleData(object = seu, features = all.genes, vars.to.regress = vars.to.regress, verbose = FALSE)
+    
+  }
+
+  ## SCT Assay
+  if (DefaultAssay(seu) == "SCT") {
+
+    seu <- SCTransform(seu, vst.flavor = "v2", vars.to.regress = vars.to.regress, verbose = TRUE)
+    
+  }
 
   # Run PCA to reduce dimensions
   seu <- RunPCA(object = seu, features = VariableFeatures(object = seu), npcs = 50, verbose = FALSE)
@@ -29,7 +42,14 @@ getClusters <- function(seu, optK) {
   seu <- FindNeighbors(object = seu, k.param = k.param, reduction = "pca", dims = 1: nPC, verbose = FALSE)
   resolution <- seq(0.05, 2.0, by = 0.05)
   seu <- FindClusters(seu, resolution = resolution, verbose = F)
+  
+  if (DefaultAssay(seu) == "SCT") {
+    meta.data <- seu@meta.data[, grep("SCT_snn_res.", colnames(seu@meta.data)) ]
+    }
+  
+  if (DefaultAssay(seu) == "RNA") {
   meta.data <- seu@meta.data[, grep("RNA_snn_res.", colnames(seu@meta.data)) ]
+  }
 
   ks <- apply(meta.data, 2, function(x) length(table(x)))
 
@@ -43,7 +63,12 @@ getClusters <- function(seu, optK) {
     # first find out if optK exist in the range of tested resolution, if yes, use the first occurence
     if ( any(optK[i]==ks) ) {
       clusters[, i] <- as.numeric(as.character(meta.data[, which(ks==optK[i])[1]]))
-      res[i] <- gsub("RNA_snn_res.", "", names(which(ks==optK[i])[1]))
+      if (DefaultAssay(seu) == "RNA") {
+        res[i] <- gsub("RNA_snn_res.", "", names(which(ks==optK[i])[1]))
+        }
+      if (DefaultAssay(seu) == "SCT") {
+        res[i] <- gsub("SCT_snn_res.", "", names(which(ks==optK[i])[1]))
+        }
     }
     else {
       # optK not exist in the range of test resolution, find the small window
