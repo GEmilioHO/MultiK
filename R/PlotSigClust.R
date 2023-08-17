@@ -6,14 +6,37 @@
 #' @param pval A matrix of P values from pairwise SigClust tests
 #' @return A diagnostic plot that shows the SigClust results
 #' @export
-PlotSigClust <- function(seu, clusters, pval) {
+PlotSigClust <- function(seu, clusters, pval, vars.to.regress = NULL) {
 
-  seu <- NormalizeData(object = seu, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
-  seu <- FindVariableFeatures(object = seu, selection.method = "vst", nfeatures = 2000,
-                              loess.span = 0.3, clip.max = "auto",
-                              num.bin = 20, binning.method = "equal_width", verbose = FALSE)
-  hvg <- VariableFeatures(object=seu)
-  norm.hvg <- seu@assays$RNA@data[hvg, ]
+  ## RNA Assay
+  if (DefaultAssay(seu) == "RNA") {
+
+    # normalizing the data
+    seu <- NormalizeData(object = seu, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
+    
+    # Find HVG genes ~ 2000 genes
+    seu <- FindVariableFeatures(object = seu, selection.method = "vst", nfeatures = 2000,
+                                 loess.span = 0.3, clip.max = "auto",
+                                 num.bin = 20, binning.method = "equal_width", verbose = FALSE)
+
+    # Scaling unwanted variation
+    all.genes <- rownames(x = seu)
+    seu <- ScaleData(object = seu, features = all.genes, vars.to.regress = vars.to.regress, verbose = FALSE)
+    
+    hvg <- VariableFeatures(object=seu)
+    norm.hvg <- seu@assays$RNA@data[hvg, ]
+  }
+
+  ## SCT Assay
+  if (DefaultAssay(seu) == "SCT") {
+
+    seu <- SCTransform(seu, vst.flavor = "v2", vars.to.regress = vars.to.regress, verbose = TRUE)
+
+    hvg <- VariableFeatures(object=seu)
+    norm.hvg <- seu@assays$SCT@data[hvg, ]
+    
+  }
+  
   ClustAssign <- as.character(clusters)
   tmp.list <- list()
   for (i in names(table(ClustAssign))) {
@@ -24,7 +47,6 @@ PlotSigClust <- function(seu, clusters, pval) {
   # Run hierarchical clustering on the cluster means
   hc <- hclust(as.dist(1 - cor(clustMean.mat)))
 
-  suppressPackageStartupMessages(library(scales))
   # plot pairwise p value heatmap
   hp <- PWSig_Heatmap(pval=pval, order=hc$order)
 
@@ -33,7 +55,8 @@ PlotSigClust <- function(seu, clusters, pval) {
   dend <- as.dendrogram(hc)
   plt_dendr <- PlotDendro(dend, nodes_shapes)
 
-  lm=rbind(c(1,2),c(1,2))
+  lm=rbind(c(1,2),
+           c(1,2))
 
   suppressPackageStartupMessages(library(grid))
   suppressPackageStartupMessages(library(gridExtra))
