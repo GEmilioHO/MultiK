@@ -5,7 +5,7 @@
 #' @param optK A vector of selected optimal Ks
 #' @return A matrix of clustering labels for each optimal K and the resolution parameters used to identifky the optimal K clusters.
 #' @export
-getClusters <- function(seu, optK) {
+getClusters <- function(seu, optK, vars.to.regress = NULL) {
 
   suppressPackageStartupMessages(library(Seurat))
 
