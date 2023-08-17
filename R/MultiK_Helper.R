@@ -208,9 +208,9 @@ MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, p
 #########################
 # Find optimal K #
 #########################
-findOptK <- function(tog) {
+findOptK <- function(tog, freq = 100) {
 
-  tog.f <- tog[tog$Freq > 100 | tog$Freq ==100, ]
+  tog.f <- tog[tog$Freq > freq | tog$Freq == freq, ]
   hpts <- chull(tog.f[, c("one_minus_rpac", "Freq")]) # in clockwise order
   hpts <- c(hpts, hpts[1])
   ch.df <- tog.f[hpts, ]
