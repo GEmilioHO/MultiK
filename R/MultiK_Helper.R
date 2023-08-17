@@ -5,7 +5,7 @@
 ###########################
 # connectivityMatrix() #
 ###########################
-connectivityMatrix = function( clusterAssignments, m, sampleKey) {
+connectivityMatrix <- function(clusterAssignments, m, sampleKey) {
   ## input: named vector of cluster assignments, matrix to add connectivities
   ## output: connectivity matrix
   names( clusterAssignments ) <- sampleKey
@@ -30,7 +30,7 @@ connectivityMatrix = function( clusterAssignments, m, sampleKey) {
 #######################
 # triangle() #
 #######################
-triangle = function(m, mode = 1) {
+triangle <- function(m, mode = 1) {
   #mode=1 for CDF, vector of lower triangle.
   #mode==3 for full matrix.
   #mode==2 for calcICL; nonredundant half matrix coun
@@ -96,8 +96,8 @@ CalcPAC <- function(x1 = 0.1, x2 = 0.9, # threshold defining the intermediate su
 ############################
 # MultiK main algorithm #
 ############################
-MultiK = function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, pSample = 0.8, seed = NULL) {
-
+MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, pSample = 0.8, seed = NULL, vars.to.regress = NULL) {
+  # setting seed for reproducibility
   if (is.null(seed) == TRUE) {
     seed <- timeSeed <- as.numeric(Sys.time())
   }
@@ -116,24 +116,37 @@ MultiK = function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, pS
   count <- 1
 
   suppressPackageStartupMessages(library(Seurat))
-
+  
   for(i in 1: reps) {
 
     print(paste("Rep: ", i, sep=""))
     # subsample the columns (the cells) from the full matrix
     subX <- seu[, subcol[[i]] ]
 
-    # normalizing the data
-    #subX <- NormalizeData(object = subX, normalization.method = "LogNormalize", scale.factor = 10000, verbose=F)
+    ## RNA Assay
+    if (DefaultAssay(subX) == "RNA") {
 
-    # Find HVG genes ~ 2000 genes
-    subX <- FindVariableFeatures(object = subX, selection.method = "vst", nfeatures = 2000,
-                                 loess.span = 0.3, clip.max = "auto",
-                                 num.bin = 20, binning.method = "equal_width", verbose = F)
+      # normalizing the data
+      #subX <- NormalizeData(object = subX, normalization.method = "LogNormalize", scale.factor = 10000, verbose=F)
+      
+      # Find HVG genes ~ 2000 genes
+      subX <- FindVariableFeatures(object = subX, selection.method = "vst", nfeatures = 2000,
+                                   loess.span = 0.3, clip.max = "auto",
+                                   num.bin = 20, binning.method = "equal_width", verbose = F)
 
-    # Scaling unwanted variation
-    all.genes <- rownames(x = subX)
-    subX <- ScaleData(object = subX, features = all.genes, verbose=F)
+      # Scaling unwanted variation
+      all.genes <- rownames(x = subX)
+      subX <- ScaleData(object = subX, features = all.genes, vars.to.regress = vars.to.regress, verbose = F)
+      
+    }
+
+    ## SCT Assay
+    if (DefaultAssay(subX) == "SCT") {
+
+      subX <- SCTransform(subX, vst.flavor = "v2", vars.to.regress = vars.to.regress, verbose = TRUE)
+      
+    }
+
     # Run PCA to reduce dimensions
     subX <- RunPCA(object = subX, features = VariableFeatures(object = subX), npcs = 50, verbose=F)
     # Run Clustering
@@ -154,39 +167,39 @@ MultiK = function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, pS
 
   }
 
-    # step 3: calculate consensus matrix across subsampling runs for each unique K
-    mInit <- matrix(0, ncol = ncol(seu), nrow = ncol(seu))
+  # step 3: calculate consensus matrix across subsampling runs for each unique K
+  mInit <- matrix(0, ncol = ncol(seu), nrow = ncol(seu))
 
-    ml <- list()
-    res <- list()
-    all.clusters.by.K <- list()
-    m.count <- list()
-    unique.ks <- unique(ks)[order(unique(ks))]
+  ml <- list()
+  res <- list()
+  all.clusters.by.K <- list()
+  m.count <- list()
+  unique.ks <- unique(ks)[order(unique(ks))]
 
-    count.k <- 1
-    for(k in unique.ks) {
-      print(paste("k =", k, sep=" "))
-      idx <- which(ks == k)
-      cluster.k <- clusters[idx]
-      all.clusters.by.K[[count.k]] <- cluster.k
+  count.k <- 1
+  for(k in unique.ks) {
+    print(paste("k =", k, sep=" "))
+    idx <- which(ks == k)
+    cluster.k <- clusters[idx]
+    all.clusters.by.K[[count.k]] <- cluster.k
 
-      for (s in 1: length(cluster.k) ) {
-        print(paste("run", s, sep = ""))
-        sampleKey <- as.numeric(sapply(names(cluster.k[[s]]), function(x){which(colnames(seu) == x)}))
-        if (s == 1){
-          ml[[count.k]] <- connectivityMatrix(cluster.k[[s]], mInit, sampleKey)
-          m.count[[count.k]] <- connectivityMatrix(rep(1, length(sampleKey)), mInit, sampleKey)
-        }else{
-          ml[[count.k]] <- connectivityMatrix(cluster.k[[s]], ml[[count.k]], sampleKey)
-          m.count[[count.k]] <- connectivityMatrix(rep(1, length(sampleKey)), m.count[[count.k]], sampleKey)
-        }
+    for (s in 1: length(cluster.k) ) {
+      print(paste("run", s, sep = ""))
+      sampleKey <- as.numeric(sapply(names(cluster.k[[s]]), function(x){which(colnames(seu) == x)}))
+      if (s == 1){
+        ml[[count.k]] <- connectivityMatrix(cluster.k[[s]], mInit, sampleKey)
+        m.count[[count.k]] <- connectivityMatrix(rep(1, length(sampleKey)), mInit, sampleKey)
+      }else{
+        ml[[count.k]] <- connectivityMatrix(cluster.k[[s]], ml[[count.k]], sampleKey)
+        m.count[[count.k]] <- connectivityMatrix(rep(1, length(sampleKey)), m.count[[count.k]], sampleKey)
       }
-
-      res[[count.k]] <- triangle(ml[[count.k]], mode = 3)/triangle(m.count[[count.k]], mode = 3)
-      res[[count.k]][which(triangle(m.count[[count.k]], mode = 3) == 0)] = 0
-      print(paste(k, " finished", sep = ""))
-      count.k <- count.k + 1
     }
+
+    res[[count.k]] <- triangle(ml[[count.k]], mode = 3)/triangle(m.count[[count.k]], mode = 3)
+    res[[count.k]][which(triangle(m.count[[count.k]], mode = 3) == 0)] = 0
+    print(paste(k, " finished", sep = ""))
+    count.k <- count.k + 1
+  }
 
   return(list("consensus" = res, "k" = ks))
 }
@@ -195,7 +208,7 @@ MultiK = function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, pS
 #########################
 # Find optimal K #
 #########################
-findOptK = function(tog) {
+findOptK <- function(tog) {
 
   tog.f <- tog[tog$Freq > 100 | tog$Freq ==100, ]
   hpts <- chull(tog.f[, c("one_minus_rpac", "Freq")]) # in clockwise order
@@ -261,7 +274,7 @@ findOptK = function(tog) {
 ###########################
 # MultiK diagnositc plot #
 ##########################
-DiagMultiKPlot = function(ks, res) {
+DiagMultiKPlot <- function(ks, res) {
 
   suppressPackageStartupMessages(library(ggplot2))
   suppressPackageStartupMessages(library(ggrepel))
@@ -271,6 +284,8 @@ DiagMultiKPlot = function(ks, res) {
 
   # set a data frame for the data to plot
   tog <- as.data.frame(table(ks)[table(ks) > 1])
+  tog$ks <- tog$Var1
+  tog$Var1 <- NULL
 
   # calculate rpac
   pacobj <- CalcPAC(x1=0.1, x2=0.9, xvec = tog$ks, ml = res)
@@ -331,8 +346,14 @@ DiagMultiKPlot = function(ks, res) {
 # Find the resolution parameter that gives optimal K in the full data #
 #######################################################################
 findResol <- function(seu, ks, optK) {
-  L <- as.numeric(gsub("RNA_snn_res.", "", names(which(ks < optK))))
-  R <- as.numeric(gsub("RNA_snn_res.", "", names(which(ks > optK)[1])))
+  if (DefaultAssay(seu) == "RNA") {
+    L <- as.numeric(gsub("RNA_snn_res.", "", names(which(ks < optK))))
+    R <- as.numeric(gsub("RNA_snn_res.", "", names(which(ks > optK)[1])))
+    }
+  if (DefaultAssay(seu) == "SCT") {
+    L <- as.numeric(gsub("SCT_snn_res.", "", names(which(ks < optK))))
+    R <- as.numeric(gsub("SCT_snn_res.", "", names(which(ks > optK)[1])))
+    }
   k_L <- ks[which(ks < optK)]
   k_L
   k_R <- ks[which(ks > optK)[1]]
@@ -360,20 +381,33 @@ findResol <- function(seu, ks, optK) {
 #####################################
 # get cluster labels at Optimal K #
 #####################################
-getClusters <- function(seu, optK) {
+getClusters <- function(seu, optK, vars.to.regress = NULL) {
 
   suppressPackageStartupMessages(library(Seurat))
 
-  # normalizing the data
-  seu <- NormalizeData(object = seu, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
-  # Find HVG genes ~ 2000 genes
-  seu <- FindVariableFeatures(object = seu, selection.method = "vst", nfeatures = 2000,
-                              loess.span = 0.3, clip.max = "auto",
-                              num.bin = 20, binning.method = "equal_width", verbose = FALSE)
+  ## RNA Assay
+  if (DefaultAssay(seu) == "RNA") {
 
-  # Scaling unwanted variation
-  all.genes <- rownames(x = seu)
-  seu <- ScaleData(object = seu, features = all.genes, verbose = FALSE)
+    # normalizing the data
+    seu <- NormalizeData(object = seu, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
+    
+    # Find HVG genes ~ 2000 genes
+    seu <- FindVariableFeatures(object = seu, selection.method = "vst", nfeatures = 2000,
+                                 loess.span = 0.3, clip.max = "auto",
+                                 num.bin = 20, binning.method = "equal_width", verbose = FALSE)
+
+    # Scaling unwanted variation
+    all.genes <- rownames(x = seu)
+    seu <- ScaleData(object = seu, features = all.genes, vars.to.regress = vars.to.regress, verbose = FALSE)
+    
+  }
+
+  ## SCT Assay
+  if (DefaultAssay(seu) == "SCT") {
+
+    seu <- SCTransform(seu, vst.flavor = "v2", vars.to.regress = vars.to.regress, verbose = TRUE)
+    
+  }
 
   # Run PCA to reduce dimensions
   seu <- RunPCA(object = seu, features = VariableFeatures(object = seu), npcs = 50, verbose = FALSE)
@@ -384,7 +418,14 @@ getClusters <- function(seu, optK) {
   seu <- FindNeighbors(object = seu, k.param = k.param, reduction = "pca", dims = 1: nPC, verbose = FALSE)
   resolution <- seq(0.05, 2.0, by = 0.05)
   seu <- FindClusters(seu, resolution = resolution, verbose = F)
+  
+  if (DefaultAssay(seu) == "SCT") {
+    meta.data <- seu@meta.data[, grep("SCT_snn_res.", colnames(seu@meta.data)) ]
+    }
+  
+  if (DefaultAssay(seu) == "RNA") {
   meta.data <- seu@meta.data[, grep("RNA_snn_res.", colnames(seu@meta.data)) ]
+  }
 
   ks <- apply(meta.data, 2, function(x) length(table(x)))
 
@@ -394,10 +435,16 @@ getClusters <- function(seu, optK) {
   res <- c()
 
   for (i in 1: length(optK)) {
+    #print(optK[i])
     # first find out if optK exist in the range of tested resolution, if yes, use the first occurence
     if ( any(optK[i]==ks) ) {
       clusters[, i] <- as.numeric(as.character(meta.data[, which(ks==optK[i])[1]]))
-      res[i] <- gsub("RNA_snn_res.", "", names(which(ks==optK[i])[1]))
+      if (DefaultAssay(seu) == "RNA") {
+        res[i] <- gsub("RNA_snn_res.", "", names(which(ks==optK[i])[1]))
+        }
+      if (DefaultAssay(seu) == "SCT") {
+        res[i] <- gsub("SCT_snn_res.", "", names(which(ks==optK[i])[1]))
+        }
     }
     else {
       # optK not exist in the range of test resolution, find the small window
@@ -406,6 +453,7 @@ getClusters <- function(seu, optK) {
       clusters[, i] <- as.numeric(as.character(seu@meta.data$seurat_clusters))
     }
   }
+  names(res) <- paste("K", optK, sep="_")
   return(list("clusters"=clusters, "resolution"=res))
 }
 
@@ -431,15 +479,39 @@ RunSigClust <- function(x1, x2, l1, l2) {
 #########################################################
 # Calculate SigClust pvalues following the dendrogram #
 #########################################################
-CalcSigClust = function(seu, clusters) {
+CalcSigClust <- function(seu, clusters, vars.to.regress = NULL) {
 
   suppressPackageStartupMessages(library(Seurat))
-  seu <- NormalizeData(object = seu, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
-  seu <- FindVariableFeatures(object = seu, selection.method = "vst", nfeatures = 2000,
-                              loess.span = 0.3, clip.max = "auto",
-                              num.bin = 20, binning.method = "equal_width", verbose = F)
-  hvg <- VariableFeatures(object=seu)
-  norm.hvg <- seu@assays$RNA@data[hvg, ]
+  
+  ## RNA Assay
+  if (DefaultAssay(seu) == "RNA") {
+
+    # normalizing the data
+    seu <- NormalizeData(object = seu, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
+    
+    # Find HVG genes ~ 2000 genes
+    seu <- FindVariableFeatures(object = seu, selection.method = "vst", nfeatures = 2000,
+                                 loess.span = 0.3, clip.max = "auto",
+                                 num.bin = 20, binning.method = "equal_width", verbose = FALSE)
+
+    # Scaling unwanted variation
+    all.genes <- rownames(x = seu)
+    seu <- ScaleData(object = seu, features = all.genes, vars.to.regress = vars.to.regress, verbose = FALSE)
+    
+    hvg <- VariableFeatures(object=seu)
+    norm.hvg <- seu@assays$RNA@data[hvg, ]
+  }
+
+  ## SCT Assay
+  if (DefaultAssay(seu) == "SCT") {
+
+    seu <- SCTransform(seu, vst.flavor = "v2", vars.to.regress = vars.to.regress, verbose = TRUE)
+
+    hvg <- VariableFeatures(object=seu)
+    norm.hvg <- seu@assays$SCT@data[hvg, ]
+    
+  }
+  
   ClustAssign <- as.character(clusters)
   n <- length(unique(ClustAssign))
   pval <- matrix(NA, ncol = n, nrow = n)
@@ -565,7 +637,7 @@ PlotDendro <- function(dend, nodes_shapes) {
 ##########################
 # assign nodes shapes #
 ##########################
-assign_nodes_shapes = function(hc, pval) {
+assign_nodes_shapes <- function(hc, pval) {
   A = hc$merge
   labelList = c()
   for (i in seq(1, nrow(A))){
@@ -601,14 +673,37 @@ assign_nodes_shapes = function(hc, pval) {
 ########################################################################
 # Plot Cluster Mean dendrograms and overlay pairwise SigClust pvalues #
 ########################################################################
-PlotSigClust = function(seu, clusters, pval) {
+PlotSigClust <- function(seu, clusters, pval, vars.to.regress = NULL) {
 
-  seu <- NormalizeData(object = seu, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
-  seu <- FindVariableFeatures(object = seu, selection.method = "vst", nfeatures = 2000,
-                              loess.span = 0.3, clip.max = "auto",
-                              num.bin = 20, binning.method = "equal_width", verbose = FALSE)
-  hvg <- VariableFeatures(object=seu)
-  norm.hvg <- seu@assays$RNA@data[hvg, ]
+  ## RNA Assay
+  if (DefaultAssay(seu) == "RNA") {
+
+    # normalizing the data
+    seu <- NormalizeData(object = seu, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
+    
+    # Find HVG genes ~ 2000 genes
+    seu <- FindVariableFeatures(object = seu, selection.method = "vst", nfeatures = 2000,
+                                 loess.span = 0.3, clip.max = "auto",
+                                 num.bin = 20, binning.method = "equal_width", verbose = FALSE)
+
+    # Scaling unwanted variation
+    all.genes <- rownames(x = seu)
+    seu <- ScaleData(object = seu, features = all.genes, vars.to.regress = vars.to.regress, verbose = FALSE)
+    
+    hvg <- VariableFeatures(object=seu)
+    norm.hvg <- seu@assays$RNA@data[hvg, ]
+  }
+
+  ## SCT Assay
+  if (DefaultAssay(seu) == "SCT") {
+
+    seu <- SCTransform(seu, vst.flavor = "v2", vars.to.regress = vars.to.regress, verbose = TRUE)
+
+    hvg <- VariableFeatures(object=seu)
+    norm.hvg <- seu@assays$SCT@data[hvg, ]
+    
+  }
+  
   ClustAssign <- as.character(clusters)
   tmp.list <- list()
   for (i in names(table(ClustAssign))) {
