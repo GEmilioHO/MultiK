@@ -67,5 +67,4 @@ DiagMultiKPlot <- function(ks, res) {
     geom_path(data=tog[match(findOptK(tog), tog$ks), ])
 
   plot_grid(freqPlot, rpacPlot, scatPlot, ncol=3)
-
 }
