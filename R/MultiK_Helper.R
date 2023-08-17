@@ -284,8 +284,10 @@ DiagMultiKPlot <- function(ks, res) {
 
   # set a data frame for the data to plot
   tog <- as.data.frame(table(ks)[table(ks) > 1])
-  tog$ks <- tog$Var1
-  tog$Var1 <- NULL
+  if (!"ks" %in% colnames(tog)) {
+     tog$ks <- tog$Var1
+     tog$Var1 <- NULL 
+  }
 
   # calculate rpac
   pacobj <- CalcPAC(x1=0.1, x2=0.9, xvec = tog$ks, ml = res)
