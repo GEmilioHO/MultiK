@@ -17,7 +17,7 @@ Single cell RNA-seq analysis tool that objectively selects multiple insightful n
 ```{}
 #install.packages("devtools")
 #library(devtools)
-#install_github("siyao-liu/MultiK")
+#install_github("GEmilioHO/MultiK")
 ```
 
 **MultiK( )** is the main function that implements the subsampling and application of the Seurat clustering over multiple resolution parameters. Details about this function can be found in the user manual:
