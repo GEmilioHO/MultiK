@@ -5,7 +5,7 @@
 #' @param clusters A vector of clustering labels
 #' @return A matrix of P values
 #' @export
-CalcSigClust <- function(seu, clusters) {
+CalcSigClust <- function(seu, clusters, vars.to.regress = NULL) {
   suppressPackageStartupMessages(library(sigclust))
   
   ## RNA Assay
