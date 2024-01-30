@@ -1,5 +1,5 @@
 # MultiK
-## NOTE: This updated version fixes bugs and allows processing of SCT and LogNorm normalized Seurat objects.
+## NOTE: This updated version fixes bugs and allows processing of SCT and LogNorm normalized in single and integrated Seurat objects.
 Single cell RNA-seq analysis tool that objectively selects multiple insightful numbers of clusters (*K*).
 
 
