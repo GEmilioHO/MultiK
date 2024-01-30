@@ -65,6 +65,7 @@ triangle <- function(m, mode = 1) {
 ##########################
 # calculate rPAC score #
 ##########################
+  
 CalcPAC <- function(x1 = 0.1, x2 = 0.9, # threshold defining the intermediate sub-interval
                     xvec, ml) {
 
@@ -98,7 +99,7 @@ CalcPAC <- function(x1 = 0.1, x2 = 0.9, # threshold defining the intermediate su
 # MultiK main algorithm #
 ############################
 
-MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, pSample = 0.8, seed = NULL, vars.to.regress = NULL, batch = "orig.ident") {
+MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, pSample = 0.8, seed = NULL, vars.to.regress = NULL, batch = "orig.ident", integrated.assay.norm.method = "LogNorm") {
   # setting seed for reproducibility
   if (is.null(seed) == TRUE) {
     seed <- timeSeed <- as.numeric(Sys.time())
@@ -157,10 +158,17 @@ MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, p
 
       # Find HVG genes ~ 2000 genes for each batch
       for (obj in obj.list) {
-        DefaultAssay(obj) <- "RNA"
-        subX <- FindVariableFeatures(object = subX, selection.method = "vst", nfeatures = 2000,
-                             loess.span = 0.3, clip.max = "auto",
-                             num.bin = 20, binning.method = "equal_width", verbose = F)
+        DefaultAssay(obj) <- integrated.assay.norm.method
+        if (integrated.assay.norm.method == "LogNorm") {
+          DefaultAssay(obj) <- "RNA"
+          obj <- FindVariableFeatures(object = obj, selection.method = "vst", nfeatures = 2000,
+                                      loess.span = 0.3, clip.max = "auto",
+                                      num.bin = 20, binning.method = "equal_width", verbose = F)
+          }
+        if (integrated.assay.norm.method == "SCT") {
+          DefaultAssay(obj) <- "SCT"
+          obj <- SCTransform(obj, vst.flavor = "v2", vars.to.regress = vars.to.regress, verbose = TRUE)
+          }
       }
 
       # Find shared HVG genes ~ 3000 genes
@@ -231,7 +239,7 @@ MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, p
 
   return(list("consensus" = res, "k" = ks))
 }
-
+  
 #########################
 # Find optimal K #
 #########################
