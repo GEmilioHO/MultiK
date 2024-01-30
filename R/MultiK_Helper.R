@@ -158,7 +158,6 @@ MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, p
 
       # Find HVG genes ~ 2000 genes for each batch
       for (obj in obj.list) {
-        DefaultAssay(obj) <- integrated.assay.norm.method
         if (integrated.assay.norm.method == "LogNorm") {
           DefaultAssay(obj) <- "RNA"
           obj <- FindVariableFeatures(object = obj, selection.method = "vst", nfeatures = 2000,
