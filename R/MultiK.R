@@ -9,7 +9,7 @@
 #' @param seed Optional numerical value. This sets a random seed for generating reproducible results
 #' @return A list with components: k is a vector of number of runs for each K. clusters is a list containing the clustering labels for each subsampling run at each resolution parameter. consensus is a list containing a consensus matrix for each K.
 #' @export
-MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, pSample = 0.8, seed = NULL, vars.to.regress = NULL, batch = "orig.ident", integrated.assay.norm.method = "RNA") {
+MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, pSample = 0.8, seed = NULL, vars.to.regress = NULL, batch = "orig.ident", integrated.assay.norm.method = "LogNorm") {
   # setting seed for reproducibility
   if (is.null(seed) == TRUE) {
     seed <- timeSeed <- as.numeric(Sys.time())
@@ -67,14 +67,16 @@ MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, p
       obj.list <- SplitObject(subX, split.by = batch)
 
       # Find HVG genes ~ 2000 genes for each batch
-      for (obj in obj.list) { 
+      for (obj in obj.list) {
         DefaultAssay(obj) <- integrated.assay.norm.method
-        if (DefaultAssay(obj) <- "RNA") {
+        if (integrated.assay.norm.method == "LogNorm") {
+          DefaultAssay(obj) <- "RNA"
           obj <- FindVariableFeatures(object = obj, selection.method = "vst", nfeatures = 2000,
                                       loess.span = 0.3, clip.max = "auto",
                                       num.bin = 20, binning.method = "equal_width", verbose = F)
           }
-        if (DefaultAssay(obj) <- "SCT") {
+        if (integrated.assay.norm.method == "SCT") {
+          DefaultAssay(obj) <- "SCT"
           obj <- SCTransform(obj, vst.flavor = "v2", vars.to.regress = vars.to.regress, verbose = TRUE)
           }
       }
