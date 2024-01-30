@@ -36,18 +36,32 @@ Note: MultiK re-selects highly variable genes in each subsampling run. Also, Mul
 ## MultiK workflow
 
 ## Example
-For this vignette, we use a 3 cell line mixture dataset published from Dong et al. 2019 (https://pubmed.ncbi.nlm.nih.gov/31925417/) to demonstrate the workflow of MultiK. This dataset contains ~2,600 cells and is included in the MultiK package.
-
+Prior running MultiK, data should be normalised and scaled.
 ```{}
-data(p3cl)
-seu <- p3cl
-```
+library(Seurat)
+library(MultiK)
 
+seurat.obj <- readRDS("path/to/seurat_object.rds")
+
+# Perform LogNormalisation
+seurat.obj <- NormalizeData(seurat.obj, normalization.method = "LogNormalize", scale.factor = 10000)
+seurat.obj <- FindVariableFeatures(seurat.obj, selection.method = "vst", nfeatures = 2000)
+seurat.obj <- ScaleData(seurat.obj, features = rownames(seurat.obj))
+
+# Alternatively, perform SCT normalisation
+seurat.obj <- SCTransform(seurat.obj, vst.flavor = "v2", verbose = TRUE)
+
+# Set DefaultAssay to the desired assay to use.
+DefaultAssay(seurat.obj) <- "SCT" # or DefaultAssay(seurat.obj) <- "RNA"
+
+# If running for an integrated object:
+DefaultAssay(seurat.obj) <- "integrated"
+```
 ### Step 1: Run **MultiK** main algorithm to determine optimal Ks
 
-Run subsampling and consensusing clustering to generate output for evaluation (this step can take a long time). For demonstration purpose, we are running 10 reps here. For real data pratice, we recommend using at least 100 reps.
+Run subsampling and consensusing clustering to generate output for evaluation (this step can take a long time). For demonstration purpose, we are running 10 reps here. For real data pratice, we recommend using at least 100 reps. Set nPC to the number of principal components used for running PCA and finding neighbours.
 ```{}
-multik <- MultiK(seu, reps=10)
+multik <- MultiK(seurat.obj, nPC = 30, reps = 10)
 ```
 
 Make MultiK diagnostic plots: 
@@ -57,21 +71,25 @@ DiagMultiKPlot(multik$k, multik$consensus)
 
 ### Step 2: Assign _classes_ and _subclasses_
 
-Get the clustering labels at optimal K level:
+Get the clustering labels at optimal K level (using either the upper or lower K). Set nPC to the number of principal components used for running PCA and finding neighbours.
 ```{}
-clusters <- getClusters(seu, 3)
+clusters <- getClusters(seurat.obj, optK = 3, nPC = 30)
 ```
 
 Run SigClust at optimal K level:
 ```{}
-pval <- CalcSigClust(seu, clusters$clusters)
+pval <- CalcSigClust(seurat.obj, clusters$clusters)
 ```
 
 Make diagnostic plots (this includes a dendrogram of cluster centroids with the pairwise SigClust _p_ values mapped on the nodes, and a heatmap of the pairwise SigClust _p_ values)
 ```{}
-PlotSigClust(seu, clusters$clusters, pval)
+PlotSigClust(seurat.obj, clusters$clusters, pval)
 ```
 
+Add cluster labels to Seurat Object.
+```{}
+po.e13.seurat$multiK.clusters <- clusters$clusters
+```
 
 ## License
 This software is licensed under MIT License.
