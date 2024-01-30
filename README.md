@@ -61,6 +61,7 @@ DefaultAssay(seurat.obj) <- "integrated"
 ### Step 1: Run **MultiK** main algorithm to determine optimal Ks
 
 Run subsampling and consensusing clustering to generate output for evaluation (this step can take a long time). For demonstration purpose, we are running 10 reps here. For real data pratice, we recommend using at least 100 reps. Set nPC to the number of principal components used for running PCA and finding neighbours.
+For integrated assays, MultiK has only been tested for objects generated with Seurat v4.
 ```{}
 # For RNA and SCT assays:
 multik <- MultiK(seurat.obj, nPC = 30, reps = 10)
