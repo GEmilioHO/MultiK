@@ -97,5 +97,5 @@ seurat.obj$multiK.clusters <- clusters$clusters
 ```
 
 ## Contact
-If you have any questions, please contact: **Siyao Liu** (<siyao@email.unc.edu>) (original developer)
+If you have any questions, please contact: **Siyao Liu** (<siyao@email.unc.edu>) (original developer) </br>
 Alternatively, contact: **Gabriel Herrera-Oropeza** (<gemilio.herrerao@gmail.com>) (SCT and integration modifications)
