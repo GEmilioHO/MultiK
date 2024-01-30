@@ -96,9 +96,6 @@ Add cluster labels to Seurat Object.
 seurat.obj$multiK.clusters <- clusters$clusters
 ```
 
-## License
-This software is licensed under MIT License.
-
-
 ## Contact
-If you have any questions, please contact: **Siyao Liu** (<siyao@email.unc.edu>)
+If you have any questions, please contact: **Siyao Liu** (<siyao@email.unc.edu>) (original developer)
+Alternatively, contact: **Gabriel Herrera-Oropeza** (<gemilio.herrerao@gmail.com>) (SCT and integration modifications)
