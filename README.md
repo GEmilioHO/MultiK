@@ -44,7 +44,8 @@ library(MultiK)
 seurat.obj <- readRDS("path/to/seurat_object.rds")
 
 # Perform LogNormalisation
-seurat.obj <- NormalizeData(seurat.obj, normalization.method = "LogNormalize", scale.factor = 10000)
+seurat.obj <- NormalizeData(seurat.obj, normalization.method = "LogNormalize",
+                            scale.factor = 10000)
 seurat.obj <- FindVariableFeatures(seurat.obj, selection.method = "vst", nfeatures = 2000)
 seurat.obj <- ScaleData(seurat.obj, features = rownames(seurat.obj))
 
@@ -64,9 +65,12 @@ Run subsampling and consensusing clustering to generate output for evaluation (t
 # For RNA and SCT assays:
 multik <- MultiK(seurat.obj, nPC = 30, reps = 10)
 
-# For integrated assays (batch = variable for identifying different batches;
-# integrated.assay.norm.method = normalisation used for each batch prior to integration (LogNorm or SCT)):
-multik <- MultiK(seurat.obj, nPC = 30, reps = 10, batch = "orig.ident", integrated.assay.norm.method = "LogNorm")
+# For integrated assays: (
+# batch = variable for identifying different batches;
+# integrated.assay.norm.method = normalisation method used for each batch
+#                                prior to integration (LogNorm or SCT)):
+multik <- MultiK(seurat.obj, nPC = 30, reps = 10, batch = "orig.ident",
+                 integrated.assay.norm.method = "LogNorm")
 ```
 
 Make MultiK diagnostic plots: 
