@@ -176,13 +176,13 @@ MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, p
       # Set shared new HVG genes as Variable Features
       VariableFeatures(subX) <- shared.hvg
 
-      # Scaling unwanted variation for LogNorm object
+      # Scaling unwanted variation for LogNorm-normalised object
       if (integrated.assay.norm.method == "LogNorm") {
         all.genes <- rownames(x = subX)
         subX <- ScaleData(object = subX, features = all.genes, vars.to.regress = vars.to.regress, verbose = F)
       }
 
-      # TODO: re-scale subset of integrated object
+      # TODO: re-scale subset of SCT-normalised integrated object
       
     }
 
