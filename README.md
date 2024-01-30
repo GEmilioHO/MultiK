@@ -65,10 +65,10 @@ Run subsampling and consensusing clustering to generate output for evaluation (t
 # For RNA and SCT assays:
 multik <- MultiK(seurat.obj, nPC = 30, reps = 10)
 
-# For integrated assays: (
+# For integrated assays: 
 # batch = variable for identifying different batches;
 # integrated.assay.norm.method = normalisation method used for each batch
-#                                prior to integration (LogNorm or SCT)):
+#                                prior to integration (LogNorm or SCT)
 multik <- MultiK(seurat.obj, nPC = 30, reps = 10, batch = "orig.ident",
                  integrated.assay.norm.method = "LogNorm")
 ```
