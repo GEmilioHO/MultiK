@@ -61,7 +61,12 @@ DefaultAssay(seurat.obj) <- "integrated"
 
 Run subsampling and consensusing clustering to generate output for evaluation (this step can take a long time). For demonstration purpose, we are running 10 reps here. For real data pratice, we recommend using at least 100 reps. Set nPC to the number of principal components used for running PCA and finding neighbours.
 ```{}
+# For RNA and SCT assays:
 multik <- MultiK(seurat.obj, nPC = 30, reps = 10)
+
+# For integrated assays (batch = variable for identifying different batches;
+# integrated.assay.norm.method = normalisation used for each batch prior to integration (LogNorm or SCT)):
+multik <- MultiK(seurat.obj, nPC = 30, reps = 10, batch = "orig.ident", integrated.assay.norm.method = "LogNorm")
 ```
 
 Make MultiK diagnostic plots: 
