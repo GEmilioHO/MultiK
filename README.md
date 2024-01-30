@@ -36,7 +36,7 @@ Note: MultiK re-selects highly variable genes in each subsampling run. Also, Mul
 ## MultiK workflow
 
 ## Example
-Prior running MultiK, data should be normalised and scaled.
+Prior to running MultiK, data should be normalised and scaled.
 ```{}
 library(Seurat)
 library(MultiK)
@@ -88,7 +88,7 @@ PlotSigClust(seurat.obj, clusters$clusters, pval)
 
 Add cluster labels to Seurat Object.
 ```{}
-po.e13.seurat$multiK.clusters <- clusters$clusters
+seurat.obj$multiK.clusters <- clusters$clusters
 ```
 
 ## License
