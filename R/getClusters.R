@@ -5,42 +5,16 @@
 #' @param optK A vector of selected optimal Ks
 #' @return A matrix of clustering labels for each optimal K and the resolution parameters used to identifky the optimal K clusters.
 #' @export
-getClusters <- function(seu, optK, vars.to.regress = NULL) {
+getClusters <- function(seu, optK, resolution = seq(0.05, 2, 0.05), nPC = 30, vars.to.regress = NULL) {
 
   suppressPackageStartupMessages(library(Seurat))
-
-  ## RNA Assay
-  if (DefaultAssay(seu) == "RNA") {
-
-    # normalizing the data
-    seu <- NormalizeData(object = seu, normalization.method = "LogNormalize", scale.factor = 10000, verbose = FALSE)
-    
-    # Find HVG genes ~ 2000 genes
-    seu <- FindVariableFeatures(object = seu, selection.method = "vst", nfeatures = 2000,
-                                 loess.span = 0.3, clip.max = "auto",
-                                 num.bin = 20, binning.method = "equal_width", verbose = FALSE)
-
-    # Scaling unwanted variation
-    all.genes <- rownames(x = seu)
-    seu <- ScaleData(object = seu, features = all.genes, vars.to.regress = vars.to.regress, verbose = FALSE)
-    
-  }
-
-  ## SCT Assay
-  if (DefaultAssay(seu) == "SCT") {
-
-    seu <- SCTransform(seu, vst.flavor = "v2", vars.to.regress = vars.to.regress, verbose = TRUE)
-    
-  }
 
   # Run PCA to reduce dimensions
   seu <- RunPCA(object = seu, features = VariableFeatures(object = seu), npcs = 50, verbose = FALSE)
 
   # Run Clustering
   k.param <- 20
-  nPC <- 30
   seu <- FindNeighbors(object = seu, k.param = k.param, reduction = "pca", dims = 1: nPC, verbose = FALSE)
-  resolution <- seq(0.05, 2.0, by = 0.05)
   seu <- FindClusters(seu, resolution = resolution, verbose = F)
   
   if (DefaultAssay(seu) == "SCT") {
@@ -49,6 +23,10 @@ getClusters <- function(seu, optK, vars.to.regress = NULL) {
   
   if (DefaultAssay(seu) == "RNA") {
   meta.data <- seu@meta.data[, grep("RNA_snn_res.", colnames(seu@meta.data)) ]
+  }
+
+  if (DefaultAssay(seu) == "integrated") {
+  meta.data <- seu@meta.data[, grep("integrated_snn_res.", colnames(seu@meta.data)) ]
   }
 
   ks <- apply(meta.data, 2, function(x) length(table(x)))
@@ -68,6 +46,9 @@ getClusters <- function(seu, optK, vars.to.regress = NULL) {
         }
       if (DefaultAssay(seu) == "SCT") {
         res[i] <- gsub("SCT_snn_res.", "", names(which(ks==optK[i])[1]))
+        }
+      if (DefaultAssay(seu) == "integrated") {
+        res[i] <- gsub("integrated_snn_res.", "", names(which(ks==optK[i])[1]))
         }
     }
     else {
