@@ -203,7 +203,8 @@ MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, p
       ks <- c(ks, length(unique(subX.clusters)))
     }
     names(clusters) <- messages
-
+    rm(subX)
+    gc()
   }
 
   # step 3: calculate consensus matrix across subsampling runs for each unique K
@@ -232,7 +233,6 @@ MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, p
         ml[[count.k]] <- connectivityMatrix(cluster.k[[s]], ml[[count.k]], sampleKey)
         m.count[[count.k]] <- connectivityMatrix(rep(1, length(sampleKey)), m.count[[count.k]], sampleKey)
       }
-      gc()
     }
 
     res[[count.k]] <- triangle(ml[[count.k]], mode = 3)/triangle(m.count[[count.k]], mode = 3)
