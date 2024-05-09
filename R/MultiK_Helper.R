@@ -217,13 +217,13 @@ MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, p
 
   count.k <- 1
   for(k in unique.ks) {
-    print(paste("k =", k, sep=" "))
+    print(paste("k =", k, "of", length(unique.ks), sep=" "))
     idx <- which(ks == k)
     cluster.k <- clusters[idx]
     all.clusters.by.K[[count.k]] <- cluster.k
 
     for (s in 1: length(cluster.k) ) {
-      print(paste("run", s, sep = ""))
+      print(paste("run", s, "of", length(cluster.k), sep = ""))
       sampleKey <- as.numeric(sapply(names(cluster.k[[s]]), function(x){which(colnames(seu) == x)}))
       if (s == 1){
         ml[[count.k]] <- connectivityMatrix(cluster.k[[s]], mInit, sampleKey)
@@ -232,6 +232,7 @@ MultiK <- function(seu, resolution = seq(0.05, 2, 0.05), nPC = 30, reps = 100, p
         ml[[count.k]] <- connectivityMatrix(cluster.k[[s]], ml[[count.k]], sampleKey)
         m.count[[count.k]] <- connectivityMatrix(rep(1, length(sampleKey)), m.count[[count.k]], sampleKey)
       }
+      gc()
     }
 
     res[[count.k]] <- triangle(ml[[count.k]], mode = 3)/triangle(m.count[[count.k]], mode = 3)
